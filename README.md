@@ -307,8 +307,7 @@ cp /opt/kaldi/egs/wsj/s5/utils/mkgraph.sh .
 ```lang="bash"
 mv /opt/vosk-model-ru/model/new/graph/HCLG.fst /opt/vosk-model-ru/model/graph/HCLG.fst
 ```
-== Заметки
-{anchor #notes}
+## Заметки
 
 Может потребоваться заменить прежний words.txt на ./vosk-model-ru/model/new/graph/words.txt.
 Командой наподобие ниже можно построить конфигурацию декодирования, текущая строка сделает это в директорию new/conf:

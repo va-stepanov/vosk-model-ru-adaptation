@@ -1,0 +1,1 @@
+# vosk-model-ru-adaptation

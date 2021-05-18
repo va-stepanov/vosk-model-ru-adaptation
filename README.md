@@ -41,7 +41,7 @@
 ## Подготовка
 
 Для распознавания речи потребуется вебсокетный сервер на Kaldi и Vosk библиотека с моделью для русского языка. 
-Подготовленная среда доступна из Docker-образа https://hub.docker.com/r/alphacep/kaldi-ru.
+Подготовленная среда доступна из [Docker-образа](https://hub.docker.com/r/alphacep/kaldi-ru).
 Изменим исходный образ так, чтобы остался закачиваемый движок и бинарники дополнительных инструментов, которые позволят проверить работу движка из командной строки. Пример: Dockerfile.kaldi-ext-ru.
 Выполняем билд образа:
 ```lang="bash"
@@ -55,7 +55,7 @@ sudo docker run -it -p 2700:2700 alphacep/kaldi-ext-ru:latest /bin/bash
 ```lang="bash"
 cd /opt/vosk-model-ru/model
 ```
-Создаем папку new и размещаем в ней скрипты decode_new.sh и path.sh. Из контейнера:
+Создаем папку new и размещаем в ней скрипты [decode_new.sh](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/decode_new.sh) и [path.sh](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/path.sh). Из контейнера:
 ```lang="bash"
 mkdir new
 ```
@@ -188,7 +188,7 @@ wget https://alphacephei.com/vosk/models/ru.dic.fst
 phonetisaurus-apply --model ./ru.dic.fst --word_list words.txt -l ru.formatted.dic > words.dic
 ```
 Получаем файл `words.dic`. В случае ошибки `/usr/bin/env: 'python': No such file or directory` делаем симлинк: `ln -s /usr/bin/python3.7 /usr/bin/python`, проверив расположение python: `whereis python`.
-g2p модель может не дать результата по отдельным словам. В этом случае можно использовать другую (натренировать свою) или воспользоваться скриптом: `dictionary.py`.
+g2p модель может не дать результата по отдельным словам. В этом случае можно использовать другую (натренировать свою) или воспользоваться скриптом: [dictionary.py](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/dictionary.py).
 
 5) [Качаем](http://www.speech.sri.com/projects/srilm/download.html) SRILM утилиту ([зеркало](https://github.com/BitSpeech/SRILM/releases)) и устанавливаем по [инструкции](https://hovinh.github.io/blog/2016-04-22-install-srilm-ubuntu/).
 
@@ -244,18 +244,17 @@ ngram 3=0
 ```lang="bash"
 gunzip -k /opt/vosk-model-ru/model/extra/db/ru-small.lm.gz
 ```
-Мержуем с помощью скрипта mergedicts.py из директории /opt/vosk-model-ru/model/new:
+Мержуем с помощью скрипта [mergedicts.py](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/mergedicts.py) из директории /opt/vosk-model-ru/model/new:
 ```lang="bash"
 cd ..
 python ./mergedicts.py ../extra/db/ru.dic ../extra/db/ru-small.lm words.dic lm.arpa merged-words.txt merged-lm.arpa
 ```
 Скрипт делает простое "слияние" сущностей модели. При этом не меняется статистическая вероятность слов. Но, даже в этом случае, будет улучшение в распознавании новых слов/предложений.
-Можно вместо этого подать исходную языковую модель на вход скрипту /opt/kaldi/egs/wsj/s5/utils/reverse_arpa.py, восстановив исходный словарь. Дополняя и работая уже с ним.
 
 #### Сборка фонетического словаря
 О понятиях фонетического словаря и графа можно почитать [тут](http://jrmeyer.github.io/asr/2016/02/01/Kaldi-notes.html).
 
-1) Подготовляем с помощью скрипта dict_prep.sh директорию `data/local/dict` с файлами на основе нового словаря:
+1) Подготовляем с помощью скрипта [dict_prep.sh](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/dict_prep.sh) директорию `data/local/dict` с файлами на основе нового словаря:
 
 2) Собирам словарь:
 ```lang="bash"

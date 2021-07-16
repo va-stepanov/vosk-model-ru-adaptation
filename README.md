@@ -38,11 +38,35 @@
 
 Далее излагается в переработанном виде материал описанный [тут](https://alphacephei.com/vosk/adaptation) и [тут](https://chrisearch.wordpress.com/2017/03/11/speech-recognition-using-kaldi-extending-and-using-the-aspire-model/).
 
+Помимо этого, предлагается воспользоваться контейнером, который уже настроен на обновление словаря
+[Dockerfile.kaldi-vosk-model-ru](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/Dockerfile.kaldi-vosk-model-ru):
+
+* git clone https://github.com/va-stepanov/vosk-model-ru-adaptation.git
+* cd vosk-model-ru-adaptation
+* build --file Dockerfile.kaldi-vosk-model-ru --tag alphacep/kaldi-vosk-model-ru:latest .
+* docker run -d -p 2700:2700 alphacep/kaldi-vosk-model-ru:latest
+
+Последняя команда стартует скрипт /opt/vosk-model-ru/model/new/update_corpus.sh, запускающий asr server:
+```lang="bash"
+python3 /opt/vosk-server/websocket/asr_server.py /opt/vosk-model-ru/model &
+```
+А также начинает отлавливать появление файла corpus.txt в директории:
+/opt/vosk-model-ru/model/new/data/corpus .
+Для проброса корпуса нужно воспользоваться командой вида: 
+```lang="bash"
+docker cp ./corpus.txt (container_id):/opt/vosk-model-ru/model/new/data/corpus
+```
+При этом за ходом обновления словаря можно следить по запущенным в контейнере процессам:
+```lang="bash"
+docker container top (container_id).
+```
+Или в собранном контейнере запускаем скрипт самостоятельно из командной строки, и получаем на консоль полный вывод.
+Скрипт написан частично по описанному ниже, частично по данным [этой](https://habr.com/ru/company/cft/blog/558824/) публикации.
 ## Подготовка
 
 Для распознавания речи потребуется вебсокетный сервер на Kaldi и Vosk библиотека с моделью для русского языка. 
 Подготовленная среда доступна из [Docker-образа](https://hub.docker.com/r/alphacep/kaldi-ru).
-Изменим исходный образ так, чтобы остался закачиваемый движок и бинарники дополнительных инструментов, которые позволят проверить работу движка из командной строки. Пример: Dockerfile.kaldi-ext-ru.
+Изменим исходный образ так, чтобы остался закачиваемый движок и бинарники дополнительных инструментов, которые позволят проверить работу движка из командной строки. Пример: [Dockerfile.kaldi-ext-ru](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/Dockerfile.kaldi-ext-ru).
 Выполняем билд образа:
 ```lang="bash"
 docker build --file Dockerfile.kaldi-ext-ru --tag alphacep/kaldi-ext-ru:latest .
@@ -68,29 +92,31 @@ sudo docker cp ./path.sh (container_id):/opt/vosk-model-ru/model/new
 ```lang="bash"
 ./new/decode_new.sh
 ```
-Должны получить, что-то наподобие:
-...
-decoder-test родион потапыч высчитывал каждой новой вершок углубления и давно определил про себя
-….
-decoder-test 1 0.09 0.42 родион 1.00 
-decoder-test 1 0.51 0.78 потапыч 1.00 
-decoder-test 1 1.50 0.81 высчитывал 0.87 
-decoder-test 1 2.31 0.57 каждый 1.00 
-decoder-test 1 2.88 0.33 новый 1.00 
-…
+Должны получить, что-то наподобие:\
+...\
+    decoder-test родион потапыч высчитывал каждой новой вершок углубления и давно определил про себя\
+    ….\
+    decoder-test 1 0.09 0.42 родион 1.00\
+    decoder-test 1 0.51 0.78 потапыч 1.00\
+    decoder-test 1 1.50 0.81 высчитывал 0.87\
+    decoder-test 1 2.31 0.57 каждый 1.00\
+    decoder-test 1 2.88 0.33 новый 1.00\
+    …\
 Возможно повление ошибки, если не хватит памяти.
 
 ## Описание
 
 Для обновления словаря модели нужно обновить граф, для этого потребуется:
 1) Подготовить лексикон в kaldi формате. Пример: words.txt
-журавлев
-попов
-пригожин
-серебрянников
-чичваркин
-шестаков
-щеглов
+
+    журавлев\
+    попов\
+    пригожин\
+    серебрянников\
+    чичваркин\
+    шестаков\
+    щебуняев\
+    щеглов
 
 2) Подготовить общую языковую модуль интерполированную с предметной.
 Есть разные [языковые модели](https://cmusphinx.github.io/wiki/tutoriallm/#language-models), говорящие о том, какую последовательность слов можно распознать. В этом примере, рассматривается статистическая языковая модель, основанная на вероятностной комбинаторике слов и их комбинаций.
@@ -112,11 +138,11 @@ decoder-test 1 2.88 0.33 новый 1.00
 
 2) Исполняем команду:
 ```lang="bash"
-grep -oE "[А-Яа-я\\-\\']{3,}" corpus.txt | tr '[:upper:]' '[:lower:]' | sort | uniq > words.txt
+grep -oE "[А-Яа-я\\-]{3,}" corpus.txt | tr '[:upper:]' '[:lower:]' | sort | uniq > words.txt
 ```
 либо, если tr не работает:
 ```lang="bash"
-grep -oE "[А-Яа-я\\-\\']{3,}" corpus.txt | sed 's/.*/\L&/' | sort | uniq > words.txt
+grep -oE "[А-Яа-я\\-]{3,}" corpus.txt | sed 's/[А-Я]/\L&/g' | sort | uniq > words.txt
 ```
 В результате получим отсортированный набор уникальных слов `words.txt`. Возможны проблемы с обработкой кириллицы, проверям локализацию командой `locale -a`. Если в контейнере локализацию починить не удается, можно скопировать готовый файл с локального хоста.
 
@@ -228,6 +254,7 @@ ngram 3=0
 -0.9542425	серебрянников
 -0.9542425	чичваркин
 -0.9542425	шестаков
+-0.9542425	щебуняев
 -0.9542425	щеглов
 
 \2-grams:
@@ -259,7 +286,7 @@ python ./mergedicts.py ../extra/db/ru.dic ../extra/db/ru-small.lm words.dic lm.
 2) Собирам словарь:
 ```lang="bash"
 mkdir dict dict_tmp
-cd /opt/kaldi/egs/wsj/s5
+cd /opt/kaldi/egs/mini_librispeech/s5
 
 phones_src=/opt/vosk-model-ru/model/graph/phones.txt
 dict_src=/opt/vosk-model-ru/model/new/data/local/dict
@@ -297,18 +324,19 @@ utils/format_lm.sh $dict $lm_src.gz $dict_src/lexicon.txt $lang
 3) Собираем HCLG граф:
 ```lang="bash"
 cd /opt/vosk-model-ru/model/new
-cp /opt/kaldi/egs/wsj/s5/utils/mkgraph.sh . 
+cp /opt/kaldi/egs/mini_librispeech/s5/utils/mkgraph.sh . 
 ./mkgraph.sh --self-loop-scale 1.0 $lang $model $graph
 ```
 Получаем файл `/opt/vosk-model-ru/model/new/graph/HCLG.fst`.
 
-4) Для использования новой модели заменим прежний файл графа:
+4) Для использования новой модели заменим исходные файлы:
 ```lang="bash"
 mv /opt/vosk-model-ru/model/new/graph/HCLG.fst /opt/vosk-model-ru/model/graph/HCLG.fst
+mv /opt/vosk-model-ru/model/new/graph/words.txt /opt/vosk-model-ru/model/graph/words.txt
+mv /opt/vosk-model-ru/model/new/lang/G.fst /opt/vosk-model-ru/model/rescore/G.fst
 ```
 ## Заметки
 
-Может потребоваться заменить прежний words.txt на ./vosk-model-ru/model/new/graph/words.txt.
 Командой наподобие ниже можно построить конфигурацию декодирования, текущая строка сделает это в директорию new/conf:
 ```lang="bash"
 steps/online/nnet3/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf $dict exp/nnet3/extractor exp/chain/tdnn_7b new

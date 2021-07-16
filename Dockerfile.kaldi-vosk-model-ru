@@ -1,4 +1,4 @@
-#docker build --file Dockerfile.kaldi-ext-ru --tag alphacep/kaldi-ext-ru:latest .
+#docker build --file Dockerfile.kaldi-vosk-model-ru --tag alphacep/kaldi-vosk-model-ru:latest .
 FROM debian:10.4
 
 ARG KALDI_MKL
@@ -53,19 +53,19 @@ RUN \
     && git clone https://github.com/alphacep/vosk-api /opt/vosk-api \
     && cd /opt/vosk-api/src \
     && KALDI_MKL=$KALDI_MKL KALDI_ROOT=/opt/kaldi make -j $(nproc) \
-    && cd /opt/vosk-api/python && python3 ./setup.py install \
+    && cd /opt/vosk-api/python \
+    && python3 ./setup.py install \
     \
     && git clone https://github.com/alphacep/vosk-server /opt/vosk-server \
-    && pip3 install grpcio-tools && cd /opt/vosk-server/grpc \
+    && pip3 install grpcio-tools \
+    && cd /opt/vosk-server/grpc \
     && python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. stt_service.proto \
     \
     && rm -rf /opt/vosk-api \
-#    && rm -rf /opt/kaldi \
+  #      && rm -rf /opt/kaldi \
     && rm -rf /root/.cache \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* 
 ENV RUVERSION=0.10
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
 RUN \ 
     mkdir /opt/vosk-model-ru \
     && cd /opt/vosk-model-ru \
@@ -76,6 +76,38 @@ RUN \
     && rm -rf model/extra/openstt-ref \
 #    && rm -rf model/rescore/G.carpa \
     && rm -rf vosk-model-ru-${RUVERSION}.zip
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+ENV KALDI_ROOT=/opt/kaldi
+ENV PATH=$KALDI_ROOT/src/bin:$KALDI_ROOT/src/fstbin:$PATH
+ENV PATH=$KALDI_ROOT/src/latbin:$KALDI_ROOT/src/online2bin:$KALDI_ROOT/src/lmbin:$KALDI_ROOT/src/rnnlmbin:$KALDI_ROOT/egs/mini_librispeech/s5/utils:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH  
+ENV PATH=$PATH:/opt/vosk-model-ru/model/new/kenlm/build/bin
+COPY . /opt/vosk-model-ru/model/new
+RUN \ 
+    mkdir -p /opt/vosk-model-ru/model/new/data/corpus \
+    && mkdir /opt/vosk-model-ru/model/new/data/lang \
+    && mkdir -p /opt/vosk-model-ru/model/new/kenlm \
+    && apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
+        inotify-tools \
+        libboost-all-dev \
+        tree \
+    #    python3-venv \
+    #    libffi-dev \
+    #&& python3 -m venv /opt/ve \
+    #&& /opt/ve/bin/pip install Cython==0.29.23 \
+    #   gevent==21.1.2 \ 
+    #&& git clone https://github.com/DinoTheDinosaur/russian_g2p_neuro.git /opt/vosk-model-ru/model/new/russian_g2p_neuro \
+    #&& cd /opt/vosk-model-ru/model/new/russian_g2p_neuro \
+    #&& /opt/ve/bin/python3 ./setup.py install \
+    && cd /opt/vosk-model-ru/model/new/kenlm \
+    && git clone https://github.com/kpu/kenlm.git . \
+    && mkdir ./build \
+    && cd ./build \
+    && cmake .. \
+    && make -j 4 \
+    && cp /opt/kaldi/egs/mini_librispeech/s5/utils/mkgraph.sh /opt/vosk-model-ru/model/new \
+    && chmod +x /opt/vosk-model-ru/model/new/*.sh \
+    && gunzip -k /opt/vosk-model-ru/model/extra/db/ru-small.lm.gz 
 EXPOSE 2700
 WORKDIR /opt/vosk-server/websocket
-CMD ["python3" "./asr_server.py" "/opt/vosk-model-ru/model"]
+CMD ["/opt/vosk-model-ru/model/new/update_corpus.sh"]

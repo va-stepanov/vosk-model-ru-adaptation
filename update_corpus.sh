@@ -7,6 +7,7 @@ WORK_DIR="$MODEL_DIR/new"
 DATA_DIR="$WORK_DIR/data"
 GRAPH_DIR="$DATA_DIR/graph"
 LANG_DIR="$DATA_DIR/lang"
+RNNLM_DIR="$DATA_DIR/rnnlm"
 
 CORPUS_DIR="$DATA_DIR/corpus"
 CORPUS_NAME="corpus.txt"
@@ -33,7 +34,7 @@ parse_file_events(){
 
 restart_web_socket(){
     kill $(pgrep -f 'python3 /opt/vosk-server/websocket/asr_server.py')
-    python3 /opt/vosk-server/websocket/asr_server.py /opt/vosk-model-ru/model &
+    python3 /opt/vosk-server/websocket/asr_server.py $MODEL_DIR &
     return 0
 }
 
@@ -46,6 +47,7 @@ make_action(){
     rm -rf $DICT_OUT/* || return 1
     rm -rf $LANG_DIR/* || return 1
     rm -rf $GRAPH_DIR/* || return 1
+    rm -rf $RNNLM_DIR/* || return 1
     grep -oE "[А-Яа-я\\-]{3,}" $CORPUS_DIR/$CORPUS_NAME | sed "s/[А-Я]/\L&/g" | sort | uniq > $CORPUS_DIR/words.txt || return 1
     #cd ./russian_g2p_neuro || return 1
     #/opt/ve/bin/python3 -m src.generate_transcriptions $CORPUS_DIR/words.txt $CORPUS_DIR/words.dic || return 1
@@ -65,10 +67,18 @@ make_action(){
     # Собираем и заменяем HCLG граф
     cd $WORK_DIR || return 1
     ./mkgraph.sh --self-loop-scale 1.0 $LANG_DIR $MODEL_DIR/am $GRAPH_DIR || return 1
+    cd /opt/kaldi/egs/wsj/s5 || return 1
+    cat /dev/null > /opt/vosk-model-ru/model/rnnlm/unigram_probs.txt || return 1
+    $WORK_DIR/change_vocab.sh $GRAPH_DIR/words.txt $MODEL_DIR/rnnlm $RNNLM_DIR || return 1
+    cd $RNNLM_DIR || return 1
+    cat special_symbol_opts.txt | sed 's/\s\+/\n/g' | sed '/^$/d' > special_symbol_opts.conf
     mv $GRAPH_DIR/HCLG.fst $MODEL_DIR/graph/HCLG.fst || return 1
     mv $GRAPH_DIR/words.txt $MODEL_DIR/graph/words.txt || return 1
     mv $WORDS_SRC $MODEL_DIR/extra/db/ru.dic || return 1
-    mv $LANG_DIR/G.fst $MODEL_DIR/rescore/G.fst
+    mv $LANG_DIR/G.fst $MODEL_DIR/rescore/G.fst || return 1
+    mv $RNNLM_DIR/word_feats.txt $MODEL_DIR/rnnlm/word_feats.txt || return 1
+    mv $RNNLM_DIR/feat_embedding.final.mat $MODEL_DIR/rnnlm/feat_embedding.final.mat || return 1
+    mv $RNNLM_DIR/special_symbol_opts.conf $MODEL_DIR/rnnlm/special_symbol_opts.conf || return 1
     restart_web_socket
     echo "successful update"
     return 0

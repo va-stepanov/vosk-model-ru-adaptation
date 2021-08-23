@@ -86,11 +86,11 @@ COPY . /opt/vosk-model-ru/model/new
 RUN \ 
     mkdir -p /opt/vosk-model-ru/model/new/data/corpus \
     && mkdir /opt/vosk-model-ru/model/new/data/lang \
-    && mkdir -p /opt/vosk-model-ru/model/new/kenlm \
+    && mkdir /opt/vosk-model-ru/model/new/data/rnnlm \
+    && mkdir /opt/vosk-model-ru/model/new/kenlm \
     && apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends \
         inotify-tools \
         libboost-all-dev \
-        tree \
     #    python3-venv \
     #    libffi-dev \
     #&& python3 -m venv /opt/ve \

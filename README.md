@@ -329,11 +329,27 @@ cp /opt/kaldi/egs/mini_librispeech/s5/utils/mkgraph.sh .
 ```
 Получаем файл `/opt/vosk-model-ru/model/new/graph/HCLG.fst`.
 
-4) Для использования новой модели заменим исходные файлы:
+4) Обновляем файлы rnnlm:
 ```lang="bash"
-mv /opt/vosk-model-ru/model/new/graph/HCLG.fst /opt/vosk-model-ru/model/graph/HCLG.fst
-mv /opt/vosk-model-ru/model/new/graph/words.txt /opt/vosk-model-ru/model/graph/words.txt
-mv /opt/vosk-model-ru/model/new/lang/G.fst /opt/vosk-model-ru/model/rescore/G.fst
+mkdir /opt/vosk-model-ru/model/new/rnnlm 
+
+rnnlm=/opt/vosk-model-ru/model/new/rnnlm
+
+cd /opt/kaldi/egs/wsj/s5
+cat /dev/null > /opt/vosk-model-ru/model/rnnlm/unigram_probs.txt
+/opt/vosk-model-ru/model/new/change_vocab.sh $graph/words.txt /opt/vosk-model-ru/model/rnnlm $rnnlm
+cd $rnnlm
+cat special_symbol_opts.txt | sed 's/\s\+/\n/g' | sed '/^$/d' > special_symbol_opts.conf
+```
+
+5) Для использования новой модели заменим исходные файлы:
+```lang="bash"
+mv $graph/HCLG.fst /opt/vosk-model-ru/model/graph/HCLG.fst
+mv $graph/words.txt /opt/vosk-model-ru/model/graph/words.txt
+mv $lang/G.fst /opt/vosk-model-ru/model/rescore/G.fst
+mv $rnnlm/word_feats.txt /opt/vosk-model-ru/model/rnnlm/word_feats.txt
+mv $rnnlm/feat_embedding.final.mat /opt/vosk-model-ru/model/rnnlm/feat_embedding.final.mat
+mv $rnnlm/special_symbol_opts.conf /opt/vosk-model-ru/model/rnnlm/special_symbol_opts.conf
 ```
 ## Заметки
 

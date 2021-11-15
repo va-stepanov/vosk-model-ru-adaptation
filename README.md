@@ -14,7 +14,7 @@
 
 [Kaldi](https://github.com/kaldi-asr/kaldi) - написанный на c++ движок для распознавания речи от компании Alpha Cephei
 
-[vosk-api](https://github.com/alphacep/vosk-api) — библиотека для распознавания речи.
+[Vosk-API](https://github.com/alphacep/vosk-api) — библиотека для распознавания речи.
 
 [Модель](https://alphacephei.com/vosk/models) — набор файлов, определяющих акустическую (фонемы и трифоны) и языковую модель (грамматика, список кортежей слов — н-грамм) разговорного языка.
 
@@ -36,6 +36,8 @@
 
 Презентации на тему [Kaldi](https://sites.google.com/site/dpovey/kaldi-lectures) и ASR [лекция №1](https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-345-automatic-speech-recognition-spring-2003/lecture-notes/lecture1.pdf) и так [далее](https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-345-automatic-speech-recognition-spring-2003/lecture-notes/lecture2.pdf).
 
+Нативное добавление слов в модель для Vosk-API описано авторами на [этой](https://alphacephei.com/vosk/lm#update-process) странице.
+
 Далее излагается в переработанном виде материал описанный [тут](https://alphacephei.com/vosk/adaptation) и [тут](https://chrisearch.wordpress.com/2017/03/11/speech-recognition-using-kaldi-extending-and-using-the-aspire-model/).
 
 Помимо этого, предлагается воспользоваться контейнером, который уже настроен на обновление словаря
@@ -43,7 +45,7 @@
 
 * git clone https://github.com/va-stepanov/vosk-model-ru-adaptation.git
 * cd vosk-model-ru-adaptation
-* build --file Dockerfile.kaldi-vosk-model-ru --tag alphacep/kaldi-vosk-model-ru:latest .
+* docker build --file Dockerfile.kaldi-vosk-model-ru --tag alphacep/kaldi-vosk-model-ru:latest .
 * docker run -d -p 2700:2700 alphacep/kaldi-vosk-model-ru:latest
 
 Последняя команда стартует скрипт /opt/vosk-model-ru/model/new/update_corpus.sh, запускающий asr server:
@@ -352,6 +354,7 @@ mv $rnnlm/feat_embedding.final.mat /opt/vosk-model-ru/model/rnnlm/feat_embedding
 mv $rnnlm/special_symbol_opts.conf /opt/vosk-model-ru/model/rnnlm/special_symbol_opts.conf
 ```
 ## Заметки
+Каталоги rnnlm и rescore можно удалить. Будет быстрее, но менее точно.
 
 Командой наподобие ниже можно построить конфигурацию декодирования, текущая строка сделает это в директорию new/conf:
 ```lang="bash"

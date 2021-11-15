@@ -71,7 +71,7 @@ make_action(){
     cat /dev/null > /opt/vosk-model-ru/model/rnnlm/unigram_probs.txt || return 1
     $WORK_DIR/change_vocab.sh $GRAPH_DIR/words.txt $MODEL_DIR/rnnlm $RNNLM_DIR || return 1
     cd $RNNLM_DIR || return 1
-    cat special_symbol_opts.txt | sed 's/\s\+/\n/g' | sed '/^$/d' > special_symbol_opts.conf
+    cat special_symbol_opts.txt | sed 's/\s\+/\n/g' | sed '/^$/d' > special_symbol_opts.conf || return 1
     mv $GRAPH_DIR/HCLG.fst $MODEL_DIR/graph/HCLG.fst || return 1
     mv $GRAPH_DIR/words.txt $MODEL_DIR/graph/words.txt || return 1
     mv $WORDS_SRC $MODEL_DIR/extra/db/ru.dic || return 1

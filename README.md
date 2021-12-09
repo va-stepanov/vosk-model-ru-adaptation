@@ -40,21 +40,22 @@
 
 Далее излагается в переработанном виде материал описанный [тут](https://alphacephei.com/vosk/adaptation) и [тут](https://chrisearch.wordpress.com/2017/03/11/speech-recognition-using-kaldi-extending-and-using-the-aspire-model/).
 
-Помимо этого, предлагается воспользоваться контейнером, который уже настроен на обновление словаря
+Помимо этого, предлагается воспользоваться контейнером, который уже настроен на обновление словаря для модели 0.10:
 [Dockerfile.kaldi-vosk-model-ru](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/Dockerfile.kaldi-vosk-model-ru):
 
-* git clone https://github.com/va-stepanov/vosk-model-ru-adaptation.git
-* cd vosk-model-ru-adaptation
-* docker build --file Dockerfile.kaldi-vosk-model-ru --tag alphacep/kaldi-vosk-model-ru:latest .
-* docker run -d -p 2700:2700 alphacep/kaldi-vosk-model-ru:latest
-
+```lang="bash"
+git clone https://github.com/va-stepanov/vosk-model-ru-adaptation.git
+cd vosk-model-ru-adaptation
+docker build --file Dockerfile.kaldi-vosk-model-ru --tag alphacep/kaldi-vosk-model-ru:latest .
+docker run -d -p 2700:2700 alphacep/kaldi-vosk-model-ru:latest
+```
 Последняя команда стартует скрипт /opt/vosk-model-ru/model/new/update_corpus.sh, запускающий asr server:
 ```lang="bash"
 python3 /opt/vosk-server/websocket/asr_server.py /opt/vosk-model-ru/model &
 ```
 А также начинает отлавливать появление файла corpus.txt в директории:
 /opt/vosk-model-ru/model/new/data/corpus .
-Для проброса корпуса нужно воспользоваться командой вида: 
+Для проброса корпуса нужно воспользоваться командой вида:
 ```lang="bash"
 docker cp ./corpus.txt (container_id):/opt/vosk-model-ru/model/new/data/corpus
 ```
@@ -64,6 +65,30 @@ docker container top (container_id).
 ```
 Или в собранном контейнере запускаем скрипт самостоятельно из командной строки, и получаем на консоль полный вывод.
 Скрипт написан частично по описанному ниже, частично по данным [этой](https://habr.com/ru/company/cft/blog/558824/) публикации.
+
+Для обновления 0.22 модели предлагается воспользоваться контейнером, использующим нативный пакет обновления:
+[Dockerfile.kaldi-vosk-model-022-ru](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/Dockerfile.kaldi-vosk-model-022-ru),
+[пакет обновления](https://alphacephei.com/vosk/models/vosk-model-ru-0.22-compile.zip)
+
+```lang="bash"
+git clone https://github.com/va-stepanov/vosk-model-ru-adaptation.git
+cd vosk-model-ru-adaptation
+docker build --file Dockerfile.kaldi-vosk-model-022-ru --tag alphacep/kaldi-vosk-model-022-ru:latest .
+docker run -d -p 2722:2700 alphacep/kaldi-vosk-model-022-ru:latest
+```
+В данном примере обращаться нужно будет на 2722 порт хоста.
+
+Последняя команда стартует скрипт /opt/vosk-model-ru-compile/update_corpus_022.sh, запускающий asr server:
+```lang="bash"
+python3 /opt/vosk-server/websocket/asr_server.py /opt/vosk-model-ru/model &
+```
+А также начинает отлавливать появление файла extra.txt в директории:
+/opt/vosk-model-ru-compile/db .
+Для проброса корпуса нужно воспользоваться командой вида: 
+```lang="bash"
+docker cp ./extra.txt (container_id):/opt/vosk-model-ru-compile/db
+```
+Использование контейнера на основе предложенного docker-файла сработает при отсутствии новых фонем.
 ## Подготовка
 
 Для распознавания речи потребуется вебсокетный сервер на Kaldi и Vosk библиотека с моделью для русского языка. 

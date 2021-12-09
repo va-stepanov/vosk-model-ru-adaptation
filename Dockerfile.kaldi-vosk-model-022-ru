@@ -1,0 +1,106 @@
+#docker build --file Dockerfile.kaldi-vosk-model-ru --tag alphacep/kaldi-vosk-model-022-ru:latest .
+FROM debian:11
+
+ARG KALDI_MKL
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        wget \
+        bzip2 \
+        unzip \
+        xz-utils \
+        g++ \
+        make \
+        cmake \
+        git \
+        python3 \
+        python3-dev \
+        python3-websockets \
+        python3-setuptools \
+        python3-pip \
+        python3-wheel \
+        python3-cffi \
+        zlib1g-dev \
+        automake \
+        autoconf \
+        libtool \
+        pkg-config \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN \
+    git clone -b vosk --single-branch https://github.com/alphacep/kaldi /opt/kaldi \
+    && cd /opt/kaldi/tools \
+    && sed -i 's:status=0:exit 0:g' extras/check_dependencies.sh \
+    #&& sed -i 's:--enable-ngram-fsts:--enable-ngram-fsts --disable-bin:g' Makefile \
+    && make -j $(nproc) openfst cub \
+    && if [ "x$KALDI_MKL" != "x1" ] ; then \
+          extras/install_openblas_clapack.sh; \
+       else \
+          extras/install_mkl.sh; \
+       fi \
+    \
+    && cd /opt/kaldi/src \
+    && if [ "x$KALDI_MKL" != "x1" ] ; then \
+          ./configure --mathlib=OPENBLAS_CLAPACK --shared; \
+       else \
+          ./configure --mathlib=MKL --shared; \
+       fi \
+    && sed -i 's:-msse -msse2:-msse -msse2:g' kaldi.mk \
+    && sed -i 's: -O1 : -O3 :g' kaldi.mk \
+    #&& make -j $(nproc) online2 lm rnnlm \
+    && make -j $(nproc) online2 lm rnnlm latbin online2bin lmbin rnnlmbin fstbin bin \
+    \
+    && git clone https://github.com/alphacep/vosk-api /opt/vosk-api \
+    && cd /opt/vosk-api/src \
+    && KALDI_MKL=$KALDI_MKL KALDI_ROOT=/opt/kaldi make -j $(nproc) \
+    && cd /opt/vosk-api/python \
+    && python3 ./setup.py install \
+    \
+    && git clone https://github.com/alphacep/vosk-server /opt/vosk-server \
+    \
+    && rm -rf /opt/vosk-api/src/*.o \
+    #&& rm -rf /opt/kaldi \
+    && rm -rf /root/.cache \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV RUVERSION 0.22
+RUN mkdir /opt/vosk-model-ru \
+   && cd /opt/vosk-model-ru \
+   && wget -q http://alphacephei.com/kaldi/models/vosk-model-ru-${RUVERSION}.zip \
+   && unzip vosk-model-ru-${RUVERSION}.zip \
+   && mv vosk-model-ru-${RUVERSION} model \
+   && rm -rf model/extra \
+   && rm -rf vosk-model-ru-${RUVERSION}.zip \
+   && mkdir /opt/vosk-model-ru-compile \
+   && cd /opt/vosk-model-ru-compile \
+   && wget -q https://alphacephei.com/vosk/models/vosk-model-ru-${RUVERSION}-compile.zip \
+   && unzip vosk-model-ru-${RUVERSION}-compile.zip \
+   && mv ./vosk-model-ru-${RUVERSION}-compile/* . \
+   && rm -rf vosk-model-ru-${RUVERSION}-compile \
+   && rm -rf vosk-model-ru-${RUVERSION}-compile.zip
+
+COPY ./update_corpus_022.sh /opt/vosk-model-ru-compile
+
+RUN apt-get update && \
+   DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      inotify-tools \
+      libboost-all-dev \
+      apt-utils \ 
+      gawk \
+      python-is-python3 \
+   && pip install pybindgen phonetisaurus \
+   && cd /opt/kaldi/tools/openfst-1.8.0 \
+   && make -j $(nproc) \
+   && make install \
+   && cd /opt/kaldi/tools \
+   && sed -i 's:post_data=[\"]WWW_file=srilm-1.7.3.tar.gz&WWW_name=$1&WWW_org=$2&WWW_email=$3[\"]:wget https\://github.com/BitSpeech/SRILM/archive/refs/tags/1.7.3.tar.gz -O ./srilm.tar.gz:g' extras/install_srilm.sh \
+   && sed -i 's:wget --post-data [\"]$post_data[\"] -O ./srilm.tar.gz [\"]$srilm_url[\"]:true:g' extras/install_srilm.sh \
+   && sed -i 's:tar -xvzf ../srilm.tar.gz:tar -xvzf ../srilm.tar.gz \&\& mv ./SRILM-1.7.3/* .:g' extras/install_srilm.sh \
+   && sed -i '1i [ -f /opt/kaldi/tools/env.sh ] && . /opt/kaldi/tools/env.sh' /opt/vosk-model-ru-compile/path.sh \
+   && extras/install_srilm.sh 'John' 'company' 'john@company.com' \
+   && rm -rf /var/lib/apt/lists/*
+
+EXPOSE 2700
+WORKDIR /opt/vosk-model-ru-compile
+CMD ["/opt/vosk-model-ru-compile/update_corpus_022.sh"]

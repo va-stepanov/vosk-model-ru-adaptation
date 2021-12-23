@@ -93,7 +93,7 @@ docker cp ./extra.txt (container_id):/opt/vosk-model-ru-compile/db
 
 Для распознавания речи потребуется вебсокетный сервер на Kaldi и Vosk библиотека с моделью для русского языка. 
 Подготовленная среда доступна из [Docker-образа](https://hub.docker.com/r/alphacep/kaldi-ru).
-Изменим исходный образ так, чтобы остался закачиваемый движок и бинарники дополнительных инструментов, которые позволят проверить работу движка из командной строки. Пример: [Dockerfile.kaldi-ext-ru](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/Dockerfile.kaldi-ext-ru).
+Изменим исходный образ так, чтобы остался закачиваемый движок и бинарники дополнительных инструментов, которые позволят проверить работу движка из командной строки. Пример, для 0.10 модели: [Dockerfile.kaldi-ext-ru](https://github.com/va-stepanov/vosk-model-ru-adaptation/blob/main/Dockerfile.kaldi-ext-ru).
 Выполняем билд образа:
 ```lang="bash"
 docker build --file Dockerfile.kaldi-ext-ru --tag alphacep/kaldi-ext-ru:latest .
@@ -175,53 +175,19 @@ grep -oE "[А-Яа-я\\-]{3,}" corpus.txt | sed 's/[А-Я]/\L&/g' | sort | uniq 
 
 #### Подготовка языковой модели
 
-1) Устанавливаем программу [phonetisaurus](https://github.com/AdolfVonKleist/Phonetisaurus). При этом нужно установить и OpenFst-1.6.2, так как с предустановленной в образе OpenFst-1.8.0 на текущий момент проблемы в [совместимости компиляторов](https://www.gnu.org/software/autoconf/manual/autoconf-2.69/html_node/Present-But-Cannot-Be-Compiled.html).
-
+1) Устанавливаем программу [phonetisaurus](https://github.com/AdolfVonKleist/Phonetisaurus). 
+Например, так:
 ```lang="bash"
-wget http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-1.6.2.tar.gz
-tar -xvzf openfst-1.6.2.tar.gz
-cd openfst-1.6.2
-// Minimal configure, compatible with current defaults for Kaldi
-./configure --enable-static --enable-shared --enable-far --enable-ngram-fsts
-make -j 4
-// Now wait a while...
-make install
-cd
-#Extend your LD_LIBRARY_PATH .bashrc:
-echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib/fst' \
-     >> ~/.bashrc
-source ~/.bashrc
+pip install pybindgen phonetisaurus
 ```
-Получаем путь:
-/opt/vosk-model-ru/model/new/openfst-1.6.2
+Альтернативный вариант представлен в конце описания.
 
-Для установки phonetisaurus:
+2) Качаем какую-нибудь g2p модель.
+Например, её можно взять из нативного [пакета обновления](https://alphacephei.com/vosk/models/vosk-model-ru-0.10-compile.zip)
 ```lang="bash"
-git clone https://github.com/AdolfVonKleist/Phonetisaurus.git
-cd Phonetisaurus
-./configure --with-openfst-libs=/opt/vosk-model-ru/model/new/openfst-1.6.2/src/lib \
-         --with-openfst-includes=/opt/vosk-model-ru/model/new/openfst-1.6.2/src/include
-make -j 2 all
-make install
-```
-либо с python3 зависимостями:
-```lang="bash"
-git clone https://github.com/AdolfVonKleist/Phonetisaurus.git
-cd Phonetisaurus
-pip3 install pybindgen
-PYTHON=python3 ./configure --enable-python
-make
-make install
-cd python
-cp ../.libs/Phonetisaurus.so .
-python3 setup.py install
-```
-Получаем путь:
-/opt/vosk-model-ru/model/new/Phonetisaurus
-
-2) Качаем g2p модель: 
-```lang="bash"
-wget https://alphacephei.com/vosk/models/ru.dic.fst
+wget https://alphacephei.com/vosk/models/vosk-model-ru-0.10-compile.zip
+unzip vosk-model-ru-0.10-compile.zip
+cp /vosk-model-ru-0.10-compile/db/ru-g2p/ru.fst ./ru.dic.fst
 ```
 
 3) Форматируем исходный словарь /opt/vosk-model-ru/model/extra/db/ru.dic
@@ -388,7 +354,7 @@ steps/online/nnet3/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf
 Для инсталирования srilm и Phonetisaurus, можно воспользоваться скриптами из директории /opt/kaldi/tools/extras/:
 `install_srilm.sh` и `install_phonetisaurus.sh`.
 
-При установке srilm:
+При установке srilm с помощью скрипта:
 ```lang="bash"
 ./install_srilm.sh
 ```
@@ -405,6 +371,51 @@ sudo apt-get install gawk
 
 ./install_srilm.sh
 ```
+При ручной установке phonetisaurus:
+Возможно, потребуется установить и OpenFst-1.6.2, так как с предустановленной в образе OpenFst-1.8.0 на май 2021 проблемы в [совместимости компиляторов](https://www.gnu.org/software/autoconf/manual/autoconf-2.69/html_node/Present-But-Cannot-Be-Compiled.html).
+
+```lang="bash"
+wget http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-1.6.2.tar.gz
+tar -xvzf openfst-1.6.2.tar.gz
+cd openfst-1.6.2
+// Minimal configure, compatible with current defaults for Kaldi
+./configure --enable-static --enable-shared --enable-far --enable-ngram-fsts
+make -j 4
+// Now wait a while...
+make install
+cd
+#Extend your LD_LIBRARY_PATH .bashrc:
+echo 'export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib/fst' \
+     >> ~/.bashrc
+source ~/.bashrc
+```
+Получаем путь:
+/opt/vosk-model-ru/model/new/openfst-1.6.2
+
+Для установки phonetisaurus:
+```lang="bash"
+git clone https://github.com/AdolfVonKleist/Phonetisaurus.git
+cd Phonetisaurus
+./configure --with-openfst-libs=/opt/vosk-model-ru/model/new/openfst-1.6.2/src/lib \
+         --with-openfst-includes=/opt/vosk-model-ru/model/new/openfst-1.6.2/src/include
+make -j 2 all
+make install
+```
+либо с python3 зависимостями:
+```lang="bash"
+git clone https://github.com/AdolfVonKleist/Phonetisaurus.git
+cd Phonetisaurus
+pip3 install pybindgen
+PYTHON=python3 ./configure --enable-python
+make
+make install
+cd python
+cp ../.libs/Phonetisaurus.so .
+python3 setup.py install
+```
+Получаем путь:
+/opt/vosk-model-ru/model/new/Phonetisaurus
+
 Для запуска модели изнутри, возращаемся в директорию `/opt/vosk-server/websocket` и выполняем команду:
 
 ```lang="bash"

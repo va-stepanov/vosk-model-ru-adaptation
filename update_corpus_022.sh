@@ -30,7 +30,7 @@ make_action(){
     ./compile-graph.sh || return 1
     cp -a ./exp/chain/tdnn/graph/. $MODEL_DIR/graph/ || return 1
     mv ./data/lang_test_rescore/G.fst $MODEL_DIR/rescore || return 1
-    mv ./data/lang_test_rescore/G.carpa $MODEL_DIR/rescore || return 1
+    #mv ./data/lang_test_rescore/G.carpa $MODEL_DIR/rescore || return 1
     cp -a ./exp/rnnlm_out/. $MODEL_DIR/rnnlm/ || return 1
     restart_web_socket
     echo "successful update"

@@ -61,7 +61,11 @@ docker cp ./corpus.txt (container_id):/opt/vosk-model-ru/model/new/data/corpus
 ```
 При этом за ходом обновления словаря можно следить по запущенным в контейнере процессам:
 ```lang="bash"
-docker container top (container_id).
+docker container top (container_id)
+```
+А также по логам:
+```lang="bash"
+docker logs -n 10 (container_id)
 ```
 Или в собранном контейнере запускаем скрипт самостоятельно из командной строки, и получаем на консоль полный вывод.
 Скрипт написан частично по описанному ниже, частично по данным [этой](https://habr.com/ru/company/cft/blog/558824/) публикации.

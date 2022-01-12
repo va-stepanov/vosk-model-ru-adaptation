@@ -98,6 +98,7 @@ RUN apt-get update && \
    && sed -i 's:wget --post-data [\"]$post_data[\"] -O ./srilm.tar.gz [\"]$srilm_url[\"]:true:g' extras/install_srilm.sh \
    && sed -i 's:tar -xvzf ../srilm.tar.gz:tar -xvzf ../srilm.tar.gz \&\& mv ./SRILM-1.7.3/* .:g' extras/install_srilm.sh \
    && sed -i '1i [ -f /opt/kaldi/tools/env.sh ] && . /opt/kaldi/tools/env.sh' /opt/vosk-model-ru-compile/path.sh \
+   && sed -i 's:KALDI_ROOT=$HOME/kaldi:KALDI_ROOT=/opt/kaldi:g' /opt/vosk-model-ru-compile/path.sh \
    && extras/install_srilm.sh 'John' 'company' 'john@company.com' \
    && rm -rf /var/lib/apt/lists/*
 

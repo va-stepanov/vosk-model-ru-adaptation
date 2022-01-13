@@ -25,14 +25,25 @@ restart_web_socket(){
     return 0
 }
 
+kill_web_socket(){
+    kill $(pgrep -f 'python3 /opt/vosk-server/websocket/asr_server.py')
+    return 0
+}
+
+start_web_socket(){
+    python3 /opt/vosk-server/websocket/asr_server.py $MODEL_DIR &
+    return 0
+}
+
 make_action(){
+    kill_web_socket || return 1
     cd $WORK_DIR || return 1
     ./compile-graph.sh || return 1
     cp -a ./exp/chain/tdnn/graph/. $MODEL_DIR/graph/ || return 1
     mv ./data/lang_test_rescore/G.fst $MODEL_DIR/rescore || return 1
-    #mv ./data/lang_test_rescore/G.carpa $MODEL_DIR/rescore || return 1
+    mv ./data/lang_test_rescore/G.carpa $MODEL_DIR/rescore || return 1
     cp -a ./exp/rnnlm_out/. $MODEL_DIR/rnnlm/ || return 1
-    restart_web_socket
+    start_web_socket || return 1
     echo "successful update"
     return 0
 }
